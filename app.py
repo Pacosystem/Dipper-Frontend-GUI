@@ -10,10 +10,9 @@ st.title("🚀 Plataforma de Modelos v3.1 (Formulario Dinámico)")
 
 # ¡URL de tu API-Backend!
 API_URL = "https://api-backend-570094060679.us-central1.run.app" 
-# (Recuerda actualizar esta URL si despliegas el backend con otro nombre)
+# (Recuerda actualizar esta URL si tu backend tiene un nombre diferente)
 
 # --- INICIALIZAR EL ESTADO DE SESIÓN ---
-# (Esto es para el formulario dinámico de features)
 if 'features' not in st.session_state:
     st.session_state.features = []
 
@@ -21,6 +20,7 @@ tab_registry, tab_upload = st.tabs(["🏛️ Registro de Modelos", "⬆️ Subir
 
 # --- 2. Pestaña 1: Registro de Modelos ---
 with tab_registry:
+    # (Esta pestaña no tenía errores y sigue igual)
     st.header("Modelos Disponibles en la Plataforma")
     try:
         response = requests.get(f"{API_URL}/models")
@@ -39,8 +39,6 @@ with tab_registry:
                         st.markdown(f"**Descripción:** `{metadata.get('description', 'N/A')}`")
                         
                         st.subheader("Probar este modelo")
-                        # --- ¡TU SOLICITUD! (Esto ya estaba bien) ---
-                        # Construye el formulario de predicción dinámicamente
                         with st.form(key=f"predict_form_{selected_model}"):
                             input_data = []
                             feature_info = metadata.get('input_features', [])
@@ -83,46 +81,49 @@ with tab_registry:
 # --- 3. Pestaña 2: Subir un Nuevo Modelo (¡Refactorizado!) ---
 with tab_upload:
     st.header("Subir un Nuevo Modelo (ONNX)")
+    st.warning("Esta plataforma solo acepta modelos .onnx.", icon="🔒")
     
-    with st.form(key="upload_form"):
-        st.subheader("1. Información del Modelo")
-        model_name = st.text_input("Nombre corto del modelo (ej: 'fish-sales-v1')")
-        description = st.text_area("Descripción (¿Qué hace este modelo?)")
+    # --- ¡ESTA ES LA CORRECCIÓN! ---
+    # PARTE 1: Formulario dinámico de features (FUERA del form de subida)
+    st.subheader("1. Definir Features de Entrada")
+    
+    # Iterar sobre las features guardadas en el estado
+    for i, feature in enumerate(st.session_state.features):
+        cols = st.columns([3, 2, 4, 1])
+        # Usamos los 'key' para que Streamlit recuerde los valores
+        st.session_state.features[i]['name'] = cols[0].text_input(f"Nombre Feature {i+1}", value=feature['name'], key=f"name_{i}")
+        st.session_state.features[i]['type'] = cols[1].selectbox(f"Tipo {i+1}", ["numeric", "categorical"], index=0 if feature['type'] == 'numeric' else 1, key=f"type_{i}")
         
-        st.subheader("2. Features de Entrada")
+        if st.session_state.features[i]['type'] == 'categorical':
+            st.session_state.features[i]['options_str'] = cols[2].text_input(f"Opciones {i+1} (separadas por coma)", value=feature.get('options_str', ''), key=f"options_{i}")
         
-        # --- ¡TU SOLICITUD! (Formulario dinámico) ---
-        
-        # Iterar sobre las features guardadas en el estado
-        for i, feature in enumerate(st.session_state.features):
-            cols = st.columns([3, 2, 4, 1])
-            feature['name'] = cols[0].text_input(f"Nombre Feature {i+1}", value=feature['name'], key=f"name_{i}")
-            feature['type'] = cols[1].selectbox(f"Tipo {i+1}", ["numeric", "categorical"], key=f"type_{i}")
-            
-            if feature['type'] == 'categorical':
-                feature['options'] = cols[2].text_input(f"Opciones {i+1} (separadas por coma)", value=feature.get('options_str', ''), key=f"options_{i}")
-            
-            # Botón para eliminar esta feature
-            if cols[3].button(f"X", key=f"del_{i}"):
-                st.session_state.features.pop(i)
-                st.rerun() # Forzar re-dibujado
-        
-        # Botón para añadir una nueva feature
-        if st.button("Añadir Feature (+)", use_container_width=True):
-            st.session_state.features.append({"name": "", "type": "numeric", "options_str": ""})
+        # Botón para eliminar esta feature (st.button, FUERA del form)
+        if cols[3].button(f"X", key=f"del_{i}"):
+            st.session_state.features.pop(i)
             st.rerun() # Forzar re-dibujado
 
-        st.subheader("3. Archivo del Modelo")
+    # Botón para añadir una nueva feature (st.button, FUERA del form)
+    if st.button("Añadir Feature (+)", use_container_width=True):
+        st.session_state.features.append({"name": "", "type": "numeric", "options_str": ""})
+        st.rerun()
+
+    st.divider()
+
+    # PARTE 2: Formulario de subida (SOLO para los datos estáticos)
+    st.header("2. Subir el Modelo")
+    with st.form(key="upload_form"):
+        model_name = st.text_input("Nombre corto del modelo (ej: 'fish-sales-v1')")
+        description = st.text_area("Descripción (¿Qué hace este modelo?)")
         model_file = st.file_uploader("Selecciona tu archivo .onnx", type=['onnx'])
         
-        st.divider()
+        # El ÚNICO botón dentro del form
         submit_button = st.form_submit_button(label="Subir Modelo y Metadatos", use_container_width=True)
 
     if submit_button:
-        # Validar que todo esté lleno
+        # 3. Lógica de envío (combina los datos)
         if model_file is not None and model_name and description and st.session_state.features:
             
-            # Procesar la lista de features
+            # Procesar la lista de features desde st.session_state
             input_features_list = []
             valid = True
             for f in st.session_state.features:
@@ -131,22 +132,21 @@ with tab_upload:
                     break
                 feature_dict = {"name": f['name'], "type": f['type']}
                 if f['type'] == 'categorical':
-                    feature_dict['options'] = [opt.strip() for opt in f.get('options', '').split(',')]
+                    feature_dict['options'] = [opt.strip() for opt in f.get('options_str', '').split(',')]
                 input_features_list.append(feature_dict)
 
             if not valid:
                 st.error("Error: Todas las features deben tener un nombre.")
             else:
-                # --- ¡NUEVO ENVÍO! ---
-                # Ya no enviamos meta_file
+                # Preparar 'files' (el .onnx)
                 files = {
                     'model_file': (f"{model_name}.onnx", model_file.getvalue(), 'application/octet-stream'),
                 }
-                # Enviamos los metadatos como campos de formulario
+                # Preparar 'data' (el texto del form + el JSON de features)
                 data = {
                     'model_name': model_name,
                     'description': description,
-                    'input_features_json': json.dumps(input_features_list) # Convertimos la lista a string JSON
+                    'input_features_json': json.dumps(input_features_list)
                 }
                 upload_url = f"{API_URL}/upload"
                 
@@ -156,6 +156,7 @@ with tab_upload:
                         if response.status_code == 201:
                             st.success(f"¡Éxito! Modelo '{model_name}' subido.")
                             st.session_state.features = [] # Limpiar formulario
+                            st.rerun()
                         else:
                             st.error(f"Error {response.status_code} desde la API:")
                             st.json(response.json())
