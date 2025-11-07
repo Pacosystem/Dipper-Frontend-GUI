@@ -9,7 +9,7 @@ st.set_page_config(page_title="Plataforma de Modelos v3.1", layout="wide")
 st.title("🚀 Plataforma de Modelos v3.1 (Formulario Dinámico)")
 
 # ¡URL de tu API-Backend!
-API_URL = "https://api-backend-945900646359.us-central1.run.app" 
+API_URL = "https://api-backend-570094060679.us-central1.run.app" 
 # (Recuerda actualizar esta URL si despliegas el backend con otro nombre)
 
 # --- INICIALIZAR EL ESTADO DE SESIÓN ---
