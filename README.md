@@ -11,14 +11,6 @@ Esta aplicación es el **Frontend** de una arquitectura MLOps ligera. Permite a 
 
 ---
 
-## 📸 Capturas de Pantalla
-
-| **Panel de Predicción** | **Subida de Modelos (Constructor UI)** |
-|:-----------------------:|:--------------------------------------:|
-| *[Inserta aquí una captura de la pestaña 1]* | *[Inserta aquí una captura de la pestaña 2]* |
-
----
-
 ## ✨ Características Principales
 
 ### 1. 🏛️ Registro y Predicción Dinámica
